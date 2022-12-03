@@ -127,8 +127,8 @@ def adpg_parallel(params_):
 
         else:  # JANSEN-RIT
             # Parameters from Stefanovski 2019. Good working point at g=33, s=15.5 on AAL2red connectome.
-            m = JansenRit1995(He=np.array([3.25]), Hi=np.array([22]),
-                              tau_e=np.array([10]), tau_i=np.array([20]),
+            m = JansenRit1995(He=np.array([3.5]), Hi=np.array([22]),
+                              tau_e=np.array([10]), tau_i=np.array([16]),
                               c=np.array([1]), c_pyr2exc=np.array([135]), c_exc2pyr=np.array([108]),
                               c_pyr2inh=np.array([33.75]), c_inh2pyr=np.array([33.75]),
                               p=np.array([0.1085]), sigma=np.array([0]),

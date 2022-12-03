@@ -56,11 +56,11 @@ for group in list(set(c3n_participants.Joint_sample)):
     for band in ["1-delta", "2-theta", "3-alpha", "4-beta", "5-gamma"]:
         temp = []
         for subj in list(set(subset.ID_BIDS)):
-            temp.append(np.loadtxt(data_folder + "FC_matrices/" + subj + "_" + band + "_plv_rms.txt", delimiter=','))
+            temp.append(np.loadtxt(data_folder + "FCavg_matrices/" + subj + "_" + band + "_plv_avg.txt", delimiter=','))
 
         temp = np.average(np.asarray(temp), axis=0)
 
-        np.savetxt(data_folder + 'FC_matrices/' + group + '_' + band + '_plv_rms.txt', temp, delimiter=",")
+        np.savetxt(data_folder + 'FCavg_matrices/' + group + '_' + band + '_plv_avg.txt', temp, delimiter=",")
 
 
 

@@ -2,16 +2,16 @@
 import pandas as pd
 from mpi4py import MPI
 import numpy as np
-from adpg_parallel import *
+from paramSpace3d_parallel import *
 
 """
 Following a tutorial: 
 https://towardsdatascience.com/parallel-programming-in-python-with-message-passing-interface-mpi4py-551e3f198053
 
-execute in terminal with : mpiexec -n 4 python mpi_adpg.py
+execute in terminal with : mpiexec -n 4 python paramSpace3d_main.py
 """
 
-name = "ADpg_v2"
+name = "ADpg_PSE3d"
 
 # get number of processors and processor rank
 comm = MPI.COMM_WORLD
@@ -20,16 +20,15 @@ rank = comm.Get_rank()
 
 ## Define param combinations
 # Common simulation requirements
-subjects = ["sub-" + str(id).zfill(2) for id in range(1, 121)]
-subjects = subjects + ["HC-fam", "HC", "FAM", "QSM", "MCI", "MCI-conv"]  ## Add averaged subjects
-models = ["jr"]
 
-coupling_vals = np.arange(0, 120, 1)
-speed_vals = np.arange(0.5, 25, 1)
-n_rep = 3
+n_perParam = 30
 
-params = [[subj, model, g, s, r] for subj in subjects for model in models
-          for g in coupling_vals for s in speed_vals for r in range(n_rep)]
+He_vals = np.round(np.linspace(2.5, 9.75, n_perParam), 2)
+Hi_vals = np.round(np.linspace(8, 40, n_perParam), 2)
+taue_vals = np.round(np.linspace(6, 20, n_perParam), 2)
+taui_vals = [16, 20, 24]
+
+params = [[He, Hi, taue, taui] for He in He_vals for Hi in Hi_vals for taue in taue_vals for taui in taui_vals]
 
 params = np.asarray(params, dtype=object)
 n = params.shape[0]
@@ -48,7 +47,7 @@ else:
 
 local_params = params[start:stop, :]  # get the portion of the array to be analyzed by each rank
 
-local_results = adpg_parallel(local_params)  # run the function for each parameter set and rank
+local_results = calibTransfOne(local_params)  # run the function for each parameter set and rank
 
 
 if rank > 0:  # WORKERS _send to rank 0
@@ -76,9 +75,7 @@ else:  ## MASTER PROCESS _receive, merge and save results
     # print("Results")
     # print(final_results)
 
-    fResults_df = pd.DataFrame(final_results, columns=["subject", "model", "g", "s", "rep",
-                                                       "min_cx", "max_cx", "IAF", "module", "bModule", "band",
-                                                       "rPLV"])
+    fResults_df = pd.DataFrame(final_results, columns=["He", "Hi", "taue", "taui", "type", "meanS", "freq", "pow"])  #, "signals"])
 
     ## Save resutls
     ## Folder structure - Local
@@ -93,7 +90,7 @@ else:  ## MASTER PROCESS _receive, merge and save results
         if os.path.isdir(specific_folder) == False:
             os.mkdir(specific_folder)
 
-        fResults_df.to_csv(specific_folder + "/results.csv", index=False)
+        fResults_df.to_pickle(specific_folder + "/results.pkl")
 
     ## Folder structure - CLUSTER
     else:
@@ -109,4 +106,4 @@ else:  ## MASTER PROCESS _receive, merge and save results
 
         os.chdir(specific_folder)
 
-        fResults_df.to_csv("results.csv", index=False)
+        fResults_df.to_pickle("results.pkl")
