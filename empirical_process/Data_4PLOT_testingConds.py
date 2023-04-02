@@ -13,6 +13,11 @@ import plotly.io as pio
 from plotly.subplots import make_subplots
 import plotly.express as px
 
+import sys
+sys.path.append("E:\\LCCN_Local\\PycharmProjects\\")
+from toolbox.littlebrains import addpial
+
+
 """
 Aquí tiene que venir una funcion que me permita visualizar los resultados de varias maneras:
 
@@ -22,46 +27,46 @@ Aquí tiene que venir una funcion que me permita visualizar los resultados de va
 
 """
 
-def rotate_z(x, y, z, theta):
-    w = x+1j*y
-    return np.real(np.exp(1j*theta)*w), np.imag(np.exp(1j*theta)*w), z
-
-## Prepare brain volume for plotting
-# Idea from Matteo Mancini: https://neurosnippets.com/posts/interactive-network/
-def obj_data_to_mesh3d(ofile):
-
-    with open(ofile, "r") as f:
-        odata = f.read()
-
-    # odata is the string read from an obj file
-    vertices = []
-    faces = []
-    lines = odata.splitlines()
-
-    for line in lines:
-        slist = line.split()
-        if slist:
-            if slist[0] == 'v':
-                vertex = np.array(slist[1:], dtype=float)
-                vertices.append(vertex)
-            elif slist[0] == 'f':
-                face = []
-                for k in range(1, len(slist)):
-                    face.append([int(s) for s in slist[k].replace('//', '/').split('/')])
-                if len(face) > 3:  # triangulate the n-polyonal face, n>3
-                    faces.extend(
-                        [[face[0][0] - 1, face[k][0] - 1, face[k + 1][0] - 1] for k in range(1, len(face) - 1)])
-                else:
-                    faces.append([face[j][0] - 1 for j in range(len(face))])
-            else:
-                pass
-
-    return np.array(vertices), np.array(faces)
-
-vertices, faces = obj_data_to_mesh3d("E:\OneDrive - Universidad Complutense de Madrid (UCM)\TheoryOfMind\Figures\lh.pial_simplified.obj")
-
-vert_x, vert_y, vert_z = vertices[:, :3].T
-face_i, face_j, face_k = faces.T
+# def rotate_z(x, y, z, theta):
+#     w = x+1j*y
+#     return np.real(np.exp(1j*theta)*w), np.imag(np.exp(1j*theta)*w), z
+#
+# ## Prepare brain volume for plotting
+# # Idea from Matteo Mancini: https://neurosnippets.com/posts/interactive-network/
+# def obj_data_to_mesh3d(ofile):
+#
+#     with open(ofile, "r") as f:
+#         odata = f.read()
+#
+#     # odata is the string read from an obj file
+#     vertices = []
+#     faces = []
+#     lines = odata.splitlines()
+#
+#     for line in lines:
+#         slist = line.split()
+#         if slist:
+#             if slist[0] == 'v':
+#                 vertex = np.array(slist[1:], dtype=float)
+#                 vertices.append(vertex)
+#             elif slist[0] == 'f':
+#                 face = []
+#                 for k in range(1, len(slist)):
+#                     face.append([int(s) for s in slist[k].replace('//', '/').split('/')])
+#                 if len(face) > 3:  # triangulate the n-polyonal face, n>3
+#                     faces.extend(
+#                         [[face[0][0] - 1, face[k][0] - 1, face[k + 1][0] - 1] for k in range(1, len(face) - 1)])
+#                 else:
+#                     faces.append([face[j][0] - 1 for j in range(len(face))])
+#             else:
+#                 pass
+#
+#     return np.array(vertices), np.array(faces)
+#
+# vertices, faces = obj_data_to_mesh3d("E:\OneDrive - Universidad Complutense de Madrid (UCM)\TheoryOfMind\Figures\BrainNetworks\First approach\lh.pial_simplified.obj")
+#
+# vert_x, vert_y, vert_z = vertices[:, :3].T
+# face_i, face_j, face_k = faces.T
 
 
 ##  PLOT results
@@ -70,9 +75,9 @@ ADNI_AVG = pd.read_csv(data_folder + "ADNI/.PET_AVx_GroupAVERAGED.csv", index_co
 conn = connectivity.Connectivity.from_file(data_folder + "SC_matrices/HC-fam_aparc_aseg-mni_09c.zip")
 
 
-#### 1. ADNI - Two rows - SIGNIFICANT
+#### 1a. ADNI - Two rows - SIGNIFICANT relative to previous stage
 """
-Works well. Showing first amiloyd-beta to rise concentration and tau after. 
+Works well. Showing an interesting pattern: first tau spreads, then ab rises and then the interaction explotes.
 """
 anova_pet = pd.read_csv(data_folder + "ADNI/.PET_2anovas_perROI.csv", index_col=0)
 posthoc=pd.read_csv(data_folder + "ADNI/.PET_3posthocs_perConn.csv", index_col=0)
@@ -145,20 +150,117 @@ for j, sp in enumerate(sp_cols):
                                ), row=2, col=j + 1)
 
     # Add 3d brains
-    fig.add_trace(go.Mesh3d(x=vert_x, y=vert_y, z=vert_z, i=face_i, j=face_j, k=face_k,
-                            color='silver', opacity=0.2, showscale=False, hoverinfo='none'), row=1, col=j+1)
-    fig.add_trace(go.Mesh3d(x=vert_x, y=vert_y, z=vert_z, i=face_i, j=face_j, k=face_k,
-                            color='silver', opacity=0.2, showscale=False, hoverinfo='none'), row=2, col=j+1)
+    sl = True if j==0 else False
+    addpial(fig, mode="surface", row=1, col=j+1, opacity=0.2, showlegend=sl, corr_x=0, corr_y=2, corr_z=-5)
+    addpial(fig, mode="surface", row=2, col=j+1, opacity=0.2, showlegend=False, corr_x=0, corr_y=2, corr_z=-5)
+
+    # fig.add_trace(go.Mesh3d(x=vert_x, y=vert_y, z=vert_z, i=face_i, j=face_j, k=face_k,
+    #                         color='silver', opacity=0.2, showscale=False, hoverinfo='none'), row=1, col=j+1)
+    # fig.add_trace(go.Mesh3d(x=vert_x, y=vert_y, z=vert_z, i=face_i, j=face_j, k=face_k,
+    #                         color='silver', opacity=0.2, showscale=False, hoverinfo='none'), row=2, col=j+1)
 
 fig.update_layout(
-         title='Significant changes in Protein deposition: ADNI dataset', template="plotly_white")
+         title='Significant changes in PET measures (relative to Previous Stage): ADNI dataset', template="plotly_white")
 
 print("Saving images: may take a while")
 # pio.write_image(fig, file='figures/ADpg_PETchanges.svg', height=800, width=1100)
-pio.write_html(fig, file='figures/ADpg_PET-SIGNIFICANTchanges.html', auto_open=True)
+pio.write_html(fig, file='figures/ADpg_PET-SIGNIFICANTchanges-Rel2PS.html', auto_open=True)
 
 
-#### 2.a. C3N (FC) - One row - SIGNIFICANT
+#### 1b. ADNI - Two rows - SIGNIFICANT relative to CN
+"""
+
+"""
+anova_pet = pd.read_csv(data_folder + "ADNI/.PET_2anovas_perROI.csv", index_col=0)
+posthoc=pd.read_csv(data_folder + "ADNI/.PET_3posthocs_perConn.csv", index_col=0)
+posthoc["roi_lower"] = [roi.lower() for roi in posthoc["roi"].values]
+
+groups = ["CN", "SMC", "EMCI", "LMCI", "AD"]
+
+# As SIGNIFICANT in mode: filter anovas and then posthocs
+sub_anovas = anova_pet[anova_pet["p-adj"] <= 0.05]
+sub_posthocs = posthoc[(posthoc["roi"].isin(sub_anovas.roi.values)) & (posthoc["p-tukey"] <= 0.05) & (posthoc["roi_lower"].isin(conn.region_labels))].copy()
+
+# Pre-define SIZE
+range_size = [5, 50]
+sub_posthocs["size"] = abs(sub_posthocs["diff"].values) * (range_size[1] - range_size[0]) + (range_size[0] - np.min(abs(sub_posthocs["diff"].values)))
+
+# pre-define COLOUR per difference
+sub_posthocs["color_out"] = ["royalblue" if np.sign(row["diff"])<0 else "indianred" for i, row in sub_posthocs.iterrows()]
+width = 20
+
+# # Pre-define COLOUR per node
+# cmap = px.colors.qualitative.Light24  # Alphabet, Dark24, Light24 have the wider range of colours.
+# cmap = (cmap * 10)[:len(conn.region_labels)//2]
+# cmap = cmap[0:7] + cmap[0:7] + cmap[7:] + cmap[7:]
+# sub_posthocs["color_in"] =  [cmap[list(conn.region_labels).index(roi)] for roi in sub_posthocs.roi_lower.values]
+
+sp_cols = ["CN->" + group for i, group in enumerate(groups[1:])]
+n_rows = 2
+
+specs = [[{"type": "scene"}] * len(sp_cols)] * n_rows
+
+fig = make_subplots(rows=n_rows, cols=len(sp_cols), horizontal_spacing=0, row_titles=["AV45", "AV1451"],
+                    subplot_titles=sp_cols, specs=specs, shared_xaxes=True, shared_yaxes=True)
+
+for j, sp in enumerate(sp_cols):
+    group1, group2 = sp.split("->")[0], sp.split("->")[1]
+    sub_sig = sub_posthocs.loc[
+        (sub_posthocs["A"].isin([group1, group2])) & (sub_posthocs["B"].isin([group1, group2]))]
+
+    if not sub_sig.empty:
+        if sub_sig["A"].values[0] != group2:
+            sub_sig = sub_sig.copy()
+            sub_sig["diff"] = -sub_sig["diff"]
+    # work on first row: AV45
+    sub_av = sub_sig[(sub_sig["pet"]=="AV45") & (sub_sig["roi"].isin(conn.region_labels))]
+
+    roi_idx = [list(conn.region_labels).index(roi) for roi in sub_av.roi.values]
+    hovertext3d = [
+        "<b>" + row["roi"] + "</b><br>" + "(g2-g1) diff " + str(round(row["diff"], 5)) for i, row in sub_av.iterrows()]
+
+    fig.add_trace(go.Scatter3d(x=[conn.centres[roi_id, 0] for roi_id in roi_idx],
+                               y=[conn.centres[roi_id, 1] for roi_id in roi_idx],
+                               z=[conn.centres[roi_id, 2] for roi_id in roi_idx],
+                               showlegend=False, hovertext=hovertext3d,
+                               mode="markers", marker=dict(size=sub_av["size"], color=sub_av["diff"], colorscale="RdBu",
+                                                           reversescale=True, cmin=-0.2, cmax=0.2),
+                               ), row=1, col=j + 1)
+    # work on second row: AV1451
+    sub_av = sub_sig[(sub_sig["pet"] == "AV1451") & (sub_sig["roi"].isin(conn.region_labels))]
+
+    roi_idx = [list(conn.region_labels).index(roi) for roi in sub_av.roi.values]
+    hovertext3d = [
+        "<b>" + row["roi"] + "</b><br>" + "(g2-g1) diff " + str(round(row["diff"], 5)) for i, row in sub_av.iterrows()]
+
+    fig.add_trace(go.Scatter3d(x=[conn.centres[roi_id, 0] for roi_id in roi_idx],
+                               y=[conn.centres[roi_id, 1] for roi_id in roi_idx],
+                               z=[conn.centres[roi_id, 2] for roi_id in roi_idx],
+                               showlegend=False, hovertext=hovertext3d,
+                               mode="markers", marker=dict(size=sub_av["size"], color=sub_av["diff"], colorscale="RdBu",
+                                                           reversescale=True, cmin=-0.2, cmax=0.2),
+                               ), row=2, col=j + 1)
+
+    # Add 3d brains
+    sl = True if j==0 else False
+    addpial(fig, mode="surface", row=1, col=j+1, opacity=0.2, showlegend=sl, corr_x=0, corr_y=2, corr_z=-5)
+    addpial(fig, mode="surface", row=2, col=j+1, opacity=0.2, showlegend=False, corr_x=0, corr_y=2, corr_z=-5)
+
+    # fig.add_trace(go.Mesh3d(x=vert_x, y=vert_y, z=vert_z, i=face_i, j=face_j, k=face_k,
+    #                         color='silver', opacity=0.2, showscale=False, hoverinfo='none'), row=1, col=j+1)
+    # fig.add_trace(go.Mesh3d(x=vert_x, y=vert_y, z=vert_z, i=face_i, j=face_j, k=face_k,
+    #                         color='silver', opacity=0.2, showscale=False, hoverinfo='none'), row=2, col=j+1)
+
+fig.update_layout(
+         title='Significant changes in PET measures (relative to CN): ADNI dataset', template="plotly_white")
+
+print("Saving images: may take a while")
+# pio.write_image(fig, file='figures/ADpg_PETchanges.svg', height=800, width=1100)
+pio.write_html(fig, file='figures/ADpg_PET-SIGNIFICANTchanges-Rel2CN.html', auto_open=True)
+
+
+
+#### 2a. C3N (FC) - One row - SIGNIFICANT
 """
 It does not work. The difference between FAM data and other is too large: 
 probably the differences in the data preprocessing (before segments) makes a big deal in the final FC matrices.
@@ -235,8 +337,9 @@ for j, sp in enumerate(sp_cols):
                                        ), row=1, col=j + 1)
 
     # Add 3d brains
-    fig.add_trace(go.Mesh3d(x=vert_x, y=vert_y, z=vert_z, i=face_i, j=face_j, k=face_k,
-                            color='silver', opacity=0.2, showscale=False, hoverinfo='none'), row=1, col=j+1)
+    addpial(fig, mode="surface", row=1, col=j+1, opacity=0.2, showlegend=True, corr_x=0, corr_y=2, corr_z=-5)
+    # fig.add_trace(go.Mesh3d(x=vert_x, y=vert_y, z=vert_z, i=face_i, j=face_j, k=face_k,
+    #                         color='silver', opacity=0.2, showscale=False, hoverinfo='none'), row=1, col=j+1)
 
 xe, ye, ze = -1.25, 2, 0.5
 fig.update_layout(
@@ -326,8 +429,9 @@ for j, sp in enumerate(sp_cols):
                                        ), row=1, col=j + 1)
 
     # Add 3d brains
-    fig.add_trace(go.Mesh3d(x=vert_x, y=vert_y, z=vert_z, i=face_i, j=face_j, k=face_k,
-                            color='silver', opacity=0.2, showscale=False, hoverinfo='none'), row=1, col=j+1)
+    addpial(fig, mode="surface", row=1, col=j+1, opacity=0.2, showlegend=True, corr_x=0, corr_y=2, corr_z=-5)
+    # fig.add_trace(go.Mesh3d(x=vert_x, y=vert_y, z=vert_z, i=face_i, j=face_j, k=face_k,
+    #                         color='silver', opacity=0.2, showscale=False, hoverinfo='none'), row=1, col=j+1)
 
 xe, ye, ze = -1.25, 2, 0.5
 fig.update_layout(title='Significant changes in FC: C3N dataset', template="plotly_white",

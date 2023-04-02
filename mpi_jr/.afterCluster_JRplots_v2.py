@@ -2,7 +2,9 @@
 import os
 
 import pandas as pd
+import numpy as np
 import time
+from itertools import chain
 
 import plotly.graph_objects as go  # for data visualisation
 import plotly.io as pio
@@ -20,13 +22,15 @@ df_avg = df.groupby(["subject", "model",  "g", "s", "sigma", "band"]).mean().res
 
 ##   PLOT PER GROUP CONDITION  -
 title = "CONDs_paramSpace"
-fig = make_subplots(rows=2, cols=6,
-                    column_titles=("HC-fam", "HC", "FAM", "QSM", "MCI", "MCI-conv"),
-                    specs=[[{}, {}, {}, {}, {}, {}], [{}, {}, {}, {}, {}, {}]], shared_yaxes=True, shared_xaxes=True,
+fig = make_subplots(rows=6, cols=6, horizontal_spacing=0.05,
+                    row_titles=("HC-fam", "FAM", "HC","QSM", "MCI", "MCI-conv"),
+                    specs=[[{}, {}, {}, {}, {}, {}]]*6, shared_yaxes=True, shared_xaxes=True,
                     x_title="Conduction speed (m/s)", y_title="Coupling factor",
-                    row_titles=["rPLV emp-sim", "max(mV)-min(mV)"])
+                    column_titles=["rPLV emp-sim", "bifurcation", "IAF", "Power", "PLV mean", "PLV sd"])
 
-for j, cond in enumerate(["HC-fam", "HC", "FAM", "QSM", "MCI", "MCI-conv"]):
+len, space, y, pad = 0.12, 0.171, 0.94, 0.05
+
+for j, cond in enumerate(["HC-fam", "FAM", "HC", "QSM", "MCI", "MCI-conv"]):
 
     subset = df_avg.loc[(df_avg["subject"] == cond) & (df_avg["band"] == "3-alpha") & (df_avg["sigma"] == 0)]
 
@@ -34,16 +38,71 @@ for j, cond in enumerate(["HC-fam", "HC", "FAM", "QSM", "MCI", "MCI-conv"]):
 
     fig.add_trace(
         go.Heatmap(z=subset.rPLV, x=subset.s, y=subset.g, colorscale='RdBu', reversescale=True,
-                   zmin=-0.5, zmax=0.5, showscale=sl, colorbar=dict(thickness=7, len=0.5, y=0.75)),
-        row=1, col=(1 + j))
+                   zmin=-0.5, zmax=0.5, showscale=sl, colorbar=dict(thickness=7, len=len, x=-pad+space*1, y=y)),
+        row=(1 + j), col=1)
 
     fig.add_trace(
         go.Heatmap(z=subset.max_cx-subset.min_cx, x=subset.s, y=subset.g, colorscale='Viridis', showscale=sl,
-                   colorbar=dict(thickness=7, len=0.5, y=0.25)),
-        row=2, col=(1 + j))
+                   colorbar=dict(thickness=7, len=len, x=-pad+space*2, y=y),
+                   zmin=df_avg.min_cx.min(), zmax=15),
+        row=(1 + j), col=2)
 
-fig.update_layout(title_text=title + " . alpha band")
-pio.write_html(fig, file=main_folder + simulations_tag + "/" + title + "-g&s.html", auto_open=True)
+    fig.add_trace(
+        go.Heatmap(z=subset.IAF, x=subset.s, y=subset.g, showscale=sl,
+                   colorbar=dict(thickness=7, len=len, x=-pad+space*3, title="Hz", y=y),
+                   zmin=df_avg.IAF.min(), zmax=df_avg.IAF.max()),
+        row=(1 + j), col=3)
+
+    fig.add_trace(
+        go.Heatmap(z=subset.bModule, x=subset.s, y=subset.g, colorscale='Viridis', showscale=sl,
+                   colorbar=dict(thickness=7, len=len, x=-pad+space*4, title="dB", y=y),
+                   zmin=df_avg.bModule.min(), zmax=1.5),
+        row=(1 + j), col=4)
+
+    fig.add_trace(
+        go.Heatmap(z=subset.plv_avg, x=subset.s, y=subset.g, colorscale='Turbo', showscale=sl,
+                   colorbar=dict(thickness=7, len=len, x=-pad+space*5, y=y),
+                   zmin=df_avg.plv_avg.min(), zmax=df_avg.plv_avg.max()),
+        row=(1 + j), col=5)
+
+    fig.add_trace(
+        go.Heatmap(z=subset.plv_sd, x=subset.s, y=subset.g, colorscale='Turbo', showscale=sl,
+                   colorbar=dict(thickness=7, len=len, x=-pad+space*6+0.025, y=y),
+                   zmin=df_avg.plv_sd.min(), zmax=df_avg.plv_sd.max()),
+        row=(1 + j), col=6)
+
+
+fig.update(frames=[go.Frame(data=list(chain.from_iterable([
+
+    [go.Heatmap(z=df_avg.loc[(df_avg["subject"] == cond) & (df_avg["band"] == "3-alpha") & (df_avg["sigma"] == sigma)].rPLV),
+
+    go.Heatmap(
+        z=df_avg.loc[(df_avg["subject"] == cond) & (df_avg["band"] == "3-alpha") & (df_avg["sigma"] == sigma)].max_cx -
+          df_avg.loc[(df_avg["subject"] == cond) & (df_avg["band"] == "3-alpha") & (df_avg["sigma"] == sigma)].min_cx),
+
+     go.Heatmap(z=df_avg.loc[(df_avg["subject"] == cond) & (df_avg["band"] == "3-alpha") & (df_avg["sigma"] == sigma)].IAF),
+     go.Heatmap(z=df_avg.loc[(df_avg["subject"] == cond) & (df_avg["band"] == "3-alpha") & (df_avg["sigma"] == sigma)].bModule),
+     go.Heatmap(z=df_avg.loc[(df_avg["subject"] == cond) & (df_avg["band"] == "3-alpha") & (df_avg["sigma"] == sigma)].plv_avg),
+     go.Heatmap(z=df_avg.loc[(df_avg["subject"] == cond) & (df_avg["band"] == "3-alpha") & (df_avg["sigma"] == sigma)].plv_sd)]
+
+                            for j, cond in enumerate(["HC-fam", "FAM", "HC", "QSM", "MCI", "MCI-conv"])])),
+
+    traces=list(np.arange(6*6)), name=str(i)) for i, sigma in enumerate(sorted(set(df_avg.sigma)))])
+
+fig.update_layout(title_text=title + " . alpha band",
+                  height=1800,
+                  sliders=[dict(
+                      steps=[
+                          dict(method='animate',
+                               args=[[str(i)], dict(mode="immediate", frame=dict(duration=100, redraw=True,
+                                                                                 easing="cubic-in-out"),
+                                                    transition=dict(duration=300))], label=str(sigma)) for i, sigma
+                          in enumerate(sorted(set(df_avg.sigma)))],
+                      transition=dict(duration=100), x=0.35, xanchor="left", y=1.1,
+                      currentvalue=dict(font=dict(size=15), prefix="Sigma - ", visible=True, xanchor="right"),
+                      len=0.5, tickcolor="white")],
+                  )
+pio.write_html(fig, file=main_folder + simulations_tag + "/" + title + "-g&s&sigma.html", auto_open=True, auto_play=False)
 
 
 
@@ -51,36 +110,36 @@ pio.write_html(fig, file=main_folder + simulations_tag + "/" + title + "-g&s.htm
 
 
 
-##   PLOT PER SUBJECT  -
-if os.path.isdir(main_folder + simulations_tag + "\\perSubject") == False:
-    os.mkdir(main_folder + simulations_tag + "\\perSubject")
-
-bands = [["1-delta", "2-theta", "3-alpha", "4-beta", "5-gamma"], [(2, 4), (4, 8), (8, 12), (12, 30), (30, 45)]]
-
-for subject in list(set(df_avg.subject)):
-
-    title = subject + "_paramSpace"
-
-    fig = make_subplots(rows=1, cols=5,
-                        column_titles=("Delta", "Theta", "Alpha", "Beta", "Gamma"),
-                        specs=[[{}, {}, {}, {}, {}]],
-                        shared_yaxes=True, shared_xaxes=True,
-                        x_title="Conduction speed (m/s)", y_title="Coupling factor")
-
-    for j, band in enumerate(bands[0]):
-
-        subset = df_avg.loc[(df_avg["subject"] == subject) & (df_avg["band"] == band)]
-
-        sl = True if j == 0 else False
-
-        fig.add_trace(
-            go.Heatmap(z=subset.rPLV, x=subset.s, y=subset.g, colorscale='RdBu', reversescale=True,
-                       zmin=-0.5, zmax=0.5, showscale=sl, colorbar=dict(thickness=7)),
-            row=1, col=(1 + j))
-
-    fig.update_layout(title_text=title)
-    pio.write_html(fig, file=main_folder + simulations_tag + "/perSubject/" + title + "-g&s.html", auto_open=False)
-
+# ##   PLOT PER SUBJECT  -
+# if os.path.isdir(main_folder + simulations_tag + "\\perSubject") == False:
+#     os.mkdir(main_folder + simulations_tag + "\\perSubject")
+#
+# bands = [["1-delta", "2-theta", "3-alpha", "4-beta", "5-gamma"], [(2, 4), (4, 8), (8, 12), (12, 30), (30, 45)]]
+#
+# for subject in list(set(df_avg.subject)):
+#
+#     title = subject + "_paramSpace"
+#
+#     fig = make_subplots(rows=1, cols=5,
+#                         column_titles=("Delta", "Theta", "Alpha", "Beta", "Gamma"),
+#                         specs=[[{}, {}, {}, {}, {}]],
+#                         shared_yaxes=True, shared_xaxes=True,
+#                         x_title="Conduction speed (m/s)", y_title="Coupling factor")
+#
+#     for j, band in enumerate(bands[0]):
+#
+#         subset = df_avg.loc[(df_avg["subject"] == subject) & (df_avg["band"] == band)]
+#
+#         sl = True if j == 0 else False
+#
+#         fig.add_trace(
+#             go.Heatmap(z=subset.rPLV, x=subset.s, y=subset.g, colorscale='RdBu', reversescale=True,
+#                        zmin=-0.5, zmax=0.5, showscale=sl, colorbar=dict(thickness=7)),
+#             row=1, col=(1 + j))
+#
+#     fig.update_layout(title_text=title)
+#     pio.write_html(fig, file=main_folder + simulations_tag + "/perSubject/" + title + "-g&s.html", auto_open=False)
+#
 
 
 

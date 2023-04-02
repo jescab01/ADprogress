@@ -1,17 +1,18 @@
+import pickle
 
 import pandas as pd
 from mpi4py import MPI
 import numpy as np
-from adpg_parallel import *
+from adpgCirc_parallel import *
 
 """
 Following a tutorial: 
 https://towardsdatascience.com/parallel-programming-in-python-with-message-passing-interface-mpi4py-551e3f198053
 
-execute in terminal with : mpiexec -n 4 python mpi_adpg.py
+execute in terminal with : mpiexec -n 4 python mpi_adpgCirc.py
 """
 
-name = "ADpg_v2"
+name = "ADpgCirc_vCC"
 
 # get number of processors and processor rank
 comm = MPI.COMM_WORLD
@@ -20,22 +21,24 @@ rank = comm.Get_rank()
 
 ## Define param combinations
 # Common simulation requirements
-subjects = ["HC-fam", "FAM", "HC", "QSM", "MCI", "MCI-conv"]  ## Add averaged subjects
-# subjects = subjects + ["sub-" + str(id).zfill(2) for id in range(1, 121)]
+maxHe_vals = np.arange(0, 2, 0.02)
+mCie_vals = np.arange(0, 30, 0.25)
+mCee_vals = np.arange(0, 100, 1)
+maxTAU2SC_vals = np.arange(0, 0.9, 0.009)
+HAdamrate_vals = np.arange(0, 50, 0.5)
 
-models = ["jr"]
+        # maxHe, mCie, mCee, maxTAU2SC, rho, HAdamrate
+params = [[maxHe, 20.5, 75, 0.3, 100, 5] for maxHe in maxHe_vals] + \
+         [[0.35, mCie, 75, 0.3, 100, 5] for mCie in mCie_vals] + \
+         [[0.35, 20.5, mCee, 0.3, 100, 5] for mCee in mCee_vals] + \
+         [[0.35, 20.5, 75, maxTAU2SC, 100, 5] for maxTAU2SC in maxTAU2SC_vals] + \
+         [[0.35, 20.5, 75, 0.3, 100, HAdamrate] for HAdamrate in HAdamrate_vals]
 
-coupling_vals = np.arange(0, 120, 1)
-speed_vals = np.arange(0.5, 25, 1)
-noise_vals = [0, 2.2e-6, 0.0022, 0.022, 0.22, 0.5]  #[0.22]  #define valor  # [0, 0.022]  # np.logspace(-8, 2, 30)
 
-n_rep = 3
-
-params = [[subj, model, g, s, r, sigma] for subj in subjects for model in models
-          for g in coupling_vals for s in speed_vals for r in range(n_rep) for sigma in noise_vals]
 
 params = np.asarray(params, dtype=object)
 n = params.shape[0]
+
 
 ## Distribution of task load in ranks
 count = n // size  # number of catchments for each process to analyze
@@ -51,39 +54,32 @@ else:
 
 local_params = params[start:stop, :]  # get the portion of the array to be analyzed by each rank
 
-local_results = adpg_parallel(local_params)  # run the function for each parameter set and rank
+local_results = adpgCirc_parallel(local_params)  # run the function for each parameter set and rank
 
+print("Rank %i ha finalizado las simulaciones" % rank)
 
 if rank > 0:  # WORKERS _send to rank 0
     comm.send(local_results, dest=0, tag=14)  # send results to process 0
+
+    print("Rank %i ha enviado los datos" % rank)
 
 else:  ## MASTER PROCESS _receive, merge and save results
     final_results = np.copy(local_results)  # initialize final results with results from process 0
     for i in range(1, size):  # determine the size of the array to be received from each process
 
-        # if i < remainder:
-        #     rank_size = count + 1
-        # else:
-        #     rank_size = count
-        # tmp = np.empty((rank_size, final_results.shape[1]))  # create empty array to receive results
-
         tmp = comm.recv(source=i, tag=14)  # receive results from the process
 
         if tmp is not None:  # Sometimes temp is a Nonetype wo/ apparent cause
-            # print(final_results.shape)
-            # print(tmp.shape)  # debugging
-            # print(i)
-
             final_results = np.vstack((final_results, tmp))  # add the received results to the final results
 
-    # print("Results")
-    # print(final_results)
+    print("Main ha recogido los datos; ahora guardar.")
 
-    fResults_df = pd.DataFrame(final_results, columns=["subject", "model", "g", "s", "rep", "sigma",
-                                                       "min_cx", "max_cx", "IAF", "module", "bModule", "band",
-                                                       "rPLV", "plv_avg", "plv_sd"])
+    fResults_df = pd.DataFrame(final_results, columns=["maxHe", "minCie", "minCee", "maxTAU2SC", "rho", "HAdamrate",
+                                                       "time", "fpeak", "relpow_alpha",
+                                                       "avgrate_pos", "avgrate_ant", "avgfc_pos", "avgfc_ant",
+                                                       "rI", "rII", "rIII", "rIV", "rV"])
 
-    ## Save resutls
+    ## Save results
     ## Folder structure - Local
     if "Jesus CabreraAlvarez" in os.getcwd():
         wd = os.getcwd()
@@ -97,6 +93,12 @@ else:  ## MASTER PROCESS _receive, merge and save results
             os.mkdir(specific_folder)
 
         fResults_df.to_csv(specific_folder + "/results.csv", index=False)
+
+        # with open(specific_folder + "/results.pkl", "wb") as f:
+        #     pickle.dump(final_results, f)
+        #     f.close()
+        # np.save(specific_folder + "/results.pkl", final_results, allow_pickle=True)
+
 
     ## Folder structure - CLUSTER
     else:
@@ -113,3 +115,9 @@ else:  ## MASTER PROCESS _receive, merge and save results
         os.chdir(specific_folder)
 
         fResults_df.to_csv("results.csv", index=False)
+
+        # np.save("results.pkl", final_results, allow_pickle=True)
+
+        # with open("results.pkl", "wb") as f:
+        #     pickle.dump(final_results, f)
+        #     f.close()

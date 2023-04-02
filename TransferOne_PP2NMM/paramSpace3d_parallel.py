@@ -24,7 +24,6 @@ else:
     from toolbox.fft import FFTpeaks
 
 
-
 def simulations(params, conn, out="fft", mode="classic", rois="bnm"):
     """
     Returning peaks and powers for every simulated region;
@@ -74,7 +73,7 @@ def simulations(params, conn, out="fft", mode="classic", rois="bnm"):
                               tau_e=params[2], tau_i=params[3],
                               c=np.array([1]), c_pyr2exc=np.array([135]), c_exc2pyr=np.array([108]),
                               c_pyr2inh=np.array([33.75]), c_inh2pyr=np.array([33.75]),
-                              p=np.array([0.09]), sigma=np.array([0]),
+                              p=np.array([0.1085]), sigma=np.array([0]),
                               e0=np.array([0.005]), r=np.array([0.56]), v0=np.array([6]))
 
             coup = coupling.SigmoidalJansenRit(a=np.array([4]), cmax=np.array([0.005]), midpoint=np.array([6]),
@@ -147,6 +146,7 @@ def simulations(params, conn, out="fft", mode="classic", rois="bnm"):
         signals = None if "flat" in type else raw_data[:10, :]
 
         return type, meanS, freq, pow, signals
+
 
 def calibTransfOne(params_):
 

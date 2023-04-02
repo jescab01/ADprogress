@@ -67,7 +67,7 @@ groups = ["CN", "SMC", "EMCI", "LMCI", "AD"]
 #                     DFlong = DFlong.append(temp.transpose())
 #     print('     .     %i/%i' % (i + 1, len(PET_AV1451)))
 #     print("   .    DONE\n")
-#
+
 # # Save the DFlong
 # DFlong.to_csv(data_folder + '/ADNI/.1PET_longdf_perROI.csv')
 DFlong = pd.read_csv(data_folder + '/ADNI/.PET_1longdf_perROI.csv', index_col=0)

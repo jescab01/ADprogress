@@ -6,7 +6,7 @@ import scipy.stats
 
 from tvb.simulator.lab import *
 from mne import filter
-from tvb.simulator.models.jansen_rit_david_mine import JansenRitDavid2003, JansenRit1995
+from tvb.simulator.models.jansen_rit_david_mine import JansenRit1995
 from mpi4py import MPI
 import datetime
 
@@ -45,9 +45,9 @@ def adpg_parallel(params_):
 
 
     # Prepare simulation parameters
-    simLength = 10 * 1000  # ms
+    simLength = 20 * 1000  # ms
     samplingFreq = 1000  # Hz
-    transient = 2000  # ms
+    transient = 5000  # ms
 
     for ii, set in enumerate(params_):
 
@@ -55,11 +55,9 @@ def adpg_parallel(params_):
         print("Rank %i out of %i  ::  %i/%i " % (rank, size, ii + 1, len(params_)))
 
         print(set)
-        emp_subj, model, g, s, r = set
+        emp_subj, model, g, s, r, sigma = set
 
         # STRUCTURAL CONNECTIVITY      #########################################
-        # Use "pass" for subcortical (thalamus) while "end" for cortex
-        # based on [https://groups.google.com/g/dsi-studio/c/-naReaw7T9E/m/7a-Y1hxdCAAJ]
 
         conn = connectivity.Connectivity.from_file(data_folder + "SC_matrices/" + emp_subj + "_aparc_aseg-mni_09c.zip")
         conn.weights = conn.scaled_weights(mode="tract")
@@ -96,7 +94,7 @@ def adpg_parallel(params_):
                          'ctx-rh-transversetemporal']
 
         #  Load FC labels, transform to SC format; check if match SC.
-        FClabs = list(np.loadtxt(data_folder + "FC_matrices/" + emp_subj + "_roi_labels_rms.txt", dtype=str))
+        FClabs = list(np.loadtxt(data_folder + "FCavg_matrices/" + emp_subj + "_roi_labels.txt", dtype=str))
         FClabs = ["ctx-lh-" + lab[:-2] if lab[-1] == "L" else "ctx-rh-" + lab[:-2] for lab in FClabs]
         FC_cortex_idx = [FClabs.index(roi) for roi in
                          cortical_rois]  # find indexes in FClabs that matches cortical_rois
@@ -107,39 +105,19 @@ def adpg_parallel(params_):
 
 
         # NEURAL MASS MODEL    #########################################################
-
-        if model == "jrd":  # JANSEN-RIT-DAVID
-            # Parameters edited from David and Friston (2003).
-            m = JansenRitDavid2003(He1=np.array([3.25]), Hi1=np.array([22]),  # SLOW population
-                                   tau_e1=np.array([10.8]), tau_i1=np.array([22.0]),
-                                   He2=np.array([3.25]), Hi2=np.array([22]),  # FAST population
-                                   tau_e2=np.array([4.6]), tau_i2=np.array([2.9]),
-
-                                   w=np.array([0.8]), c=np.array([135.0]),
-                                   c_pyr2exc=np.array([1.0]), c_exc2pyr=np.array([0.8]),
-                                   c_pyr2inh=np.array([0.25]), c_inh2pyr=np.array([0.25]),
-                                   v0=np.array([6.0]), e0=np.array([0.005]), r=np.array([0.56]),
-                                   p=np.array([0.22]), sigma=np.array([0.022]))
-
-            # Remember to hold tau*H constant.
-            m.He1, m.Hi1 = np.array([32.5 / m.tau_e1]), np.array([440 / m.tau_i1])
-            m.He2, m.Hi2 = np.array([32.5 / m.tau_e2]), np.array([440 / m.tau_i2])
-
-        else:  # JANSEN-RIT
-            # Parameters from Stefanovski 2019. Good working point at g=33, s=15.5 on AAL2red connectome.
-            m = JansenRit1995(He=np.array([3.5]), Hi=np.array([22]),
-                              tau_e=np.array([10]), tau_i=np.array([16]),
-                              c=np.array([1]), c_pyr2exc=np.array([135]), c_exc2pyr=np.array([108]),
-                              c_pyr2inh=np.array([33.75]), c_inh2pyr=np.array([33.75]),
-                              p=np.array([0.1085]), sigma=np.array([0]),
-                              e0=np.array([0.005]), r=np.array([0.56]), v0=np.array([6]))
+        # JANSEN-RIT
+        # Parameters from Stefanovski 2019. Good working point at g=33, s=15.5 on AAL2red connectome.
+        m = JansenRit1995(He=np.array([3.25]), Hi=np.array([22]),
+                          tau_e=np.array([10]), tau_i=np.array([20]),
+                          c=np.array([1]), c_pyr2exc=np.array([135]), c_exc2pyr=np.array([108]),
+                          c_pyr2inh=np.array([33.75]), c_inh2pyr=np.array([33.75]),
+                          p=np.array([0.1085]), sigma=np.array([sigma]),
+                          e0=np.array([0.005]), r=np.array([0.56]), v0=np.array([6]))
 
         # COUPLING FUNCTION   #########################################
-        if model == "jrd":
-            coup = coupling.SigmoidalJansenRitDavid(a=np.array([g]), w=m.w, e0=m.e0, v0=m.v0, r=m.r)
-        else:
-            coup = coupling.SigmoidalJansenRit(a=np.array([g]), cmax=np.array([0.005]), midpoint=np.array([6]),
-                                               r=np.array([0.56]))
+
+        coup = coupling.SigmoidalJansenRit(a=np.array([g]), cmax=np.array([0.005]), midpoint=np.array([6]),
+                                           r=np.array([0.56]))
 
 
         # OTHER PARAMETERS   ###
@@ -149,7 +127,7 @@ def adpg_parallel(params_):
 
         mon = (monitors.Raw(),)
 
-        print("Simulating %s (%is)  ||  PARAMS: g%0.2f s%0.2f" % (model, simLength / 1000, g, s))
+        print("Simulating %s (%is)  ||  PARAMS: g%0.2f s%0.2f sigma%0.2f" % (model, simLength / 1000, g, s, sigma))
 
         # Run simulation
         sim = simulator.Simulator(model=m, connectivity=conn, coupling=coup, integrator=integrator, monitors=mon)
@@ -162,12 +140,12 @@ def adpg_parallel(params_):
             raw_data = m.w * (output[0][1][transient:, 0, :, 0].T - output[0][1][transient:, 1, :, 0].T) + \
                        (1 - m.w) * (output[0][1][transient:, 3, :, 0].T - output[0][1][transient:, 4, :, 0].T)
         else:
-            raw_data = output[0][1][transient:, 0, :, 0].T
+            pspPyr = output[0][1][transient:, 1, :, 0].T - output[0][1][transient:, 2, :, 0].T  # PSPs activity as recorded in MEEG
         raw_time = output[0][0][transient:]
         regionLabels = conn.region_labels
 
         # Extract signals of interest
-        raw_data = raw_data[SC_cortex_idx, :]
+        raw_data = pspPyr[SC_cortex_idx, :]
 
         # Save min/max(signal) for bifurcation
         max_cx = np.average(np.array([max(signal) for i, signal in enumerate(raw_data)]))
@@ -177,8 +155,8 @@ def adpg_parallel(params_):
         # Saving in FFT results: coupling value, conduction speed, mean signal freq peak (Hz; module), all signals info.
         _, _, IAF, module, band_module = multitapper(raw_data, samplingFreq, regionLabels, peaks=True)
 
-        # bands = [["3-alpha"], [(8, 12)]]
-        bands = [["1-delta", "2-theta", "3-alpha", "4-beta", "5-gamma"], [(2, 4), (4, 8), (8, 12), (12, 30), (30, 45)]]
+        bands = [["3-alpha"], [(8, 12)]]
+        # bands = [["1-delta", "2-theta", "3-alpha", "4-beta", "5-gamma"], [(2, 4), (4, 8), (8, 12), (12, 30), (30, 45)]]
 
         for b in range(len(bands[0])):
             (lowcut, highcut) = bands[1][b]
@@ -216,7 +194,7 @@ def adpg_parallel(params_):
 
             # Load empirical data to make simple comparisons
             plv_emp = \
-                np.loadtxt(data_folder + "FC_matrices/" + emp_subj + "_" + bands[0][b] + "_plv_rms.txt", delimiter=',')[:,
+                np.loadtxt(data_folder + "FCavg_matrices/" + emp_subj + "_" + bands[0][b] + "_plv_avg.txt", delimiter=',')[:,
                 FC_cortex_idx][
                     FC_cortex_idx]
 
@@ -247,9 +225,9 @@ def adpg_parallel(params_):
 
             ## Gather results
             result.append(
-                (emp_subj, model,  g, s, r, min_cx, max_cx,
+                (emp_subj, model,  g, s, r, sigma, min_cx, max_cx,
                  IAF[0], module[0], band_module[0], bands[0][b],
-                 plv_r))
+                 plv_r, np.average(plv), np.std(plv)))
 
         print("LOOP ROUND REQUIRED %0.3f seconds.\n\n" % (time.time() - tic,))
 
