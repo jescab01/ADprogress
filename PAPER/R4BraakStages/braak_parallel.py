@@ -9,7 +9,7 @@ import datetime
 from tvb.simulator.lab import connectivity
 
 
-def adpgCirc_parallel(params_):
+def braak_parallel(params_):
 
     result = list()
 
@@ -58,13 +58,15 @@ def adpgCirc_parallel(params_):
         # from toolbox.fc import PLV
         # from toolbox.dynamics import dynamic_fc, kuramoto_order
 
-    for ii, set in enumerate(params_):
+    for ii, set_ in enumerate(params_):
 
         print("Rank %i out of %i  ::  %i/%i " % (rank, size, ii + 1, len(params_)))
 
-        print(set)
-        # maxHe, mCie, mCee, maxTAU2SC, rho, HAdamrate
-        maxHe, mCie, mCee, maxTAU2SC, rho, HAdamrate, cABinh, cTAUinh = set
+        mode, r = set_
+        print(set_)
+
+        # Fixed model parameters
+        maxHe, mCie, mCee, TAU2SC, rho, HAdamrate, cABinh, cTAUinh = 0.35, 20.5, 75, 5e-2, 100, 5, 0.4, 1.8
 
         #     1.  PREPARE EMPIRICAL DATA      #########################
         #   STRUCTURAL CONNECTIVITY   #########
@@ -157,18 +159,67 @@ def adpgCirc_parallel(params_):
 
         AB_initMap, TAU_initMap = [[1 for roi in conn.region_labels]] * 2
 
-        ##  REGIONAL SEEDs for toxic proteins
-        AB_seeds = ["ctx-lh-precuneus", "ctx-lh-isthmuscingulate", "ctx-lh-insula", "ctx-lh-medialorbitofrontal",
-                    "ctx-lh-lateralorbitofrontal",
-                    "ctx-rh-precuneus", "ctx-rh-isthmuscingulate", "ctx-rh-insula", "ctx-rh-medialorbitofrontal",
-                    "ctx-rh-lateralorbitofrontal"]
-        TAU_seeds = ["ctx-lh-entorhinal", "ctx-rh-entorhinal"]
-
-        ABt_initMap = [0.05 / len(AB_seeds) if roi in AB_seeds else 0 for roi in conn.region_labels]
-        TAUt_initMap = [0.005 / len(TAU_seeds) if roi in TAU_seeds else 0 for roi in conn.region_labels]
-
         AB_initdam, TAU_initdam = [[0 for roi in conn.region_labels]] * 2
         HA_initdam = [0 for roi in conn.region_labels]
+
+        if useDMN:
+
+            bilateral_rois = list(set([roi[7:] for roi in conn.region_labels if roi[:3] == "ctx"]))
+
+            if mode == "fixed":
+                ##  REGIONAL SEEDs for toxic proteins
+                AB_seeds = ["ctx-lh-precuneus", "ctx-lh-isthmuscingulate", "ctx-lh-insula", "ctx-lh-medialorbitofrontal",
+                            "ctx-lh-lateralorbitofrontal",
+                            "ctx-rh-precuneus", "ctx-rh-isthmuscingulate", "ctx-rh-insula", "ctx-rh-medialorbitofrontal",
+                            "ctx-rh-lateralorbitofrontal"]
+                TAU_seeds = ["ctx-lh-entorhinal", "ctx-rh-entorhinal"]
+
+                ABt_initMap = [0.05 / len(AB_seeds) if roi in AB_seeds else 0 for roi in conn.region_labels]
+                TAUt_initMap = [0.005 / len(TAU_seeds) if roi in TAU_seeds else 0 for roi in conn.region_labels]
+
+            elif mode == "ab_rand":
+
+                ##  REGIONAL SEEDs for toxic proteins
+                TAU_seeds = ["ctx-lh-entorhinal", "ctx-rh-entorhinal"]
+
+                # Randomize the pairs of regions selected, keeping the same global number - AB 5 pairs; tau 1 pair.
+                random_seeds = np.random.randint(0, len(bilateral_rois), size=2)
+                AB_seeds = ["ctx-lh-" + bilateral_rois[id] for id in random_seeds] +\
+                           ["ctx-rh-" + bilateral_rois[id] for id in random_seeds]
+
+
+                ABt_initMap = [0.05 / len(AB_seeds) if roi in AB_seeds else 0 for roi in conn.region_labels]
+                TAUt_initMap = [0.005 / len(TAU_seeds) if roi in TAU_seeds else 0 for roi in conn.region_labels]
+
+            elif mode == "tau_rand":
+                ##  REGIONAL SEEDs for toxic proteins
+                AB_seeds = ["ctx-lh-precuneus", "ctx-lh-isthmuscingulate", "ctx-lh-insula", "ctx-lh-medialorbitofrontal",
+                            "ctx-lh-lateralorbitofrontal",
+                            "ctx-rh-precuneus", "ctx-rh-isthmuscingulate", "ctx-rh-insula", "ctx-rh-medialorbitofrontal",
+                            "ctx-rh-lateralorbitofrontal"]
+
+                # Randomize the pairs of regions selected, keeping the same global number - AB 5 pairs; tau 1 pair.
+                random_seeds = np.random.randint(0, len(bilateral_rois), size=1)
+
+                TAU_seeds = ["ctx-lh-" + bilateral_rois[id] for id in random_seeds] +\
+                            ["ctx-rh-" + bilateral_rois[id] for id in random_seeds]
+
+                ABt_initMap = [0.05 / len(AB_seeds) if roi in AB_seeds else 0 for roi in conn.region_labels]
+                TAUt_initMap = [0.005 / len(TAU_seeds) if roi in TAU_seeds else 0 for roi in conn.region_labels]
+
+            elif mode == "rand":
+                ##  REGIONAL SEEDs for toxic proteins
+                # Randomize the pairs of regions selected, keeping the same global number - AB 5 pairs; tau 1 pair.
+                random_seeds = np.random.randint(0, len(bilateral_rois), size=2)
+                AB_seeds = ["ctx-lh-" + bilateral_rois[id] for id in random_seeds] + \
+                            ["ctx-rh-" + bilateral_rois[id] for id in random_seeds]
+
+                random_seeds = np.random.randint(0, len(bilateral_rois), size=1)
+                TAU_seeds = ["ctx-lh-" + bilateral_rois[id] for id in random_seeds] + \
+                            ["ctx-rh-" + bilateral_rois[id] for id in random_seeds]
+
+                ABt_initMap = [0.05 / len(AB_seeds) if roi in AB_seeds else 0 for roi in conn.region_labels]
+                TAUt_initMap = [0.005 / len(TAU_seeds) if roi in TAU_seeds else 0 for roi in conn.region_labels]
 
         #    3. PARAMETERS   and   SIMULATE      ########################################
         title, tic = "vH_cModel_AlexInit_dmn" + str(useDMN), time.time()
@@ -177,8 +228,8 @@ def adpgCirc_parallel(params_):
 
         circmodel = CircularADpgModel_vCC(
             conn, AB_initMap, TAU_initMap, ABt_initMap, TAUt_initMap, AB_initdam, TAU_initdam, HA_initdam,
-            TAU_dam2SC=5e-2, HA_damrate=HAdamrate, maxTAU2SCdam=maxTAU2SC,  # maxHAdam=maxHAdam,  # origins @ ¿?, 0.01, 1.5
-            init_He=3.25, init_Cee=108, init_Cie=33.75, # init_He=3.25, init_Hi=22,  # origins 3.25, 22 || Initial values for NMM variable parameters
+            TAU_dam2SC=TAU2SC, HA_damrate=HAdamrate,  # maxHAdam=maxHAdam,  # origins @ ¿?, 0.01, 1.5
+            init_He=3.25, init_Cee=108, init_Cie=33.75,  # init_He=3.25, init_Hi=22,  # origins 3.25, 22 || Initial values for NMM variable parameters
             rho=rho, toxicSynergy=0.4,  # origins 5, 2 || rho as a diffusion constant
             prodAB=3, clearAB=3, transAB2t=3, clearABt=2.4,
             prodTAU=3, clearTAU=3, transTAU2t=3, clearTAUt=2.55,
@@ -285,9 +336,7 @@ def adpgCirc_parallel(params_):
         #                         timepoints, peak_freqs, pow_alpha,
         #                         post_avgrate, ant_avgrate, posterior_fc, anterior_fc]).transpose())
 
-        result.append(np.array([[maxHe]*len(peak_freqs), [mCie]*len(peak_freqs),
-                                [mCee]*len(peak_freqs), [maxTAU2SC]*len(peak_freqs), [rho]*len(peak_freqs),
-                                [HAdamrate]*len(peak_freqs), [cABinh]*len(peak_freqs), [cTAUinh]*len(peak_freqs),
+        result.append(np.array([[mode]*len(peak_freqs), [r]*len(peak_freqs),
                                 timepoints, peak_freqs, pow_alpha,
                                 post_avgrate, ant_avgrate, posterior_fc, anterior_fc,
                                 braidI, braidII, braidIII, braidIV, braidV]).transpose())

@@ -34,7 +34,7 @@ if "LCCN_Local" in os.getcwd():
     from toolbox.littlebrains import addpial
 
 ## Folder structure - CLUSTER
-else:
+elif "t192" in os.getcwd():
     wd = "/home/t192/t192950/mpi/"
     data_folder = wd + "ADprogress_data/"
     import sys
@@ -46,6 +46,18 @@ else:
     from toolbox.dynamics import dynamic_fc, kuramoto_order
     from toolbox.littlebrains import addpial
 
+## Folder structure - CLUSTER BRIGIT
+else:
+    wd = "/mnt/lustre/home/jescab01/"
+    data_folder = wd + "ADprogress_data/"
+    import sys
+
+    sys.path.append(wd)
+    from toolbox.fft import FFTpeaks
+    from toolbox.signals import epochingTool
+    from toolbox.fc import PLV
+    from toolbox.dynamics import dynamic_fc, kuramoto_order
+    from toolbox.littlebrains import addpial
 
 class ProteinSpreadModel:
     # Spread model variables following Alexandersen 2022.
@@ -518,8 +530,8 @@ class CircularADpgModel_vCC:
                  init_He, init_Cee, init_Cie, rho=0.001, toxicSynergy=2,
                  prodAB=2, clearAB=2, transAB2t=2, clearABt=1.5,
                  prodTAU=2, clearTAU=2, transTAU2t=2, clearTAUt=2.66,
-                 AB_damrate=1, TAU_damrate=1, TAU_dam2SC=0.2, maxTAU2SCdam=0.3, HA_damrate=1, maxHAdam=2,
-                 cABexc=0.8, cABinh=0.4, cTAU=1.8):
+                 AB_damrate=1, TAU_damrate=1, TAU_dam2SC=0.2, HA_damrate=1, maxHAdam=2, maxTAU2SCdam=0.2,
+                 cABexc=0.8, cABinh=0.4, cTAUexc=1.8, cTAUinh=1.8):
 
         self.rho = {"label": "rho", "value": np.array([rho]),
                     "doc": "effective diffusion constant (cm/year)"}
@@ -561,22 +573,23 @@ class CircularADpgModel_vCC:
 
         AB_initdam = AB_initdam if type(AB_initdam) == list else [AB_initdam for roi in initConn.region_labels]
         self.AB_initdam = {"label": "q(AB)", "value": AB_initdam, "doc": "initial damage/impact variable of AB"}
+        self.AB_damrate = {"label": "k(AB)", "value": np.array([AB_damrate]),
+                           "doc": "rate of damage/impact for AB (M/year)"}
+
         TAU_initdam = TAU_initdam if type(TAU_initdam) == list else [TAU_initdam for roi in initConn.region_labels]
         self.TAU_initdam = {"label": "q(TAU)", "value": TAU_initdam,
                             "doc": "initial damage/impact of hyperphosphorilated TAU"}
-        HA_initdam = HA_initdam if type(HA_initdam) == list else [HA_initdam for roi in initConn.region_labels]
-        self.HA_initdam = {"label": "q(POW)", "value": HA_initdam, "doc": "initial damage/impact variable of POWER"}
-        self.maxHAdam = {"label": "q(POW)", "value": np.array([maxHAdam]),
-                          "doc": "max damage/impact variable of POWER"}
-
-        self.AB_damrate = {"label": "k(AB)", "value": np.array([AB_damrate]),
-                           "doc": "rate of damage/impact for AB (M/year)"}
         self.TAU_damrate = {"label": "K(TAU)", "value": np.array([TAU_damrate]),
                             "doc": "rate of damage/impact for hyperphosphorilated TAU (M/year)"}
         self.TAU_dam2SC = {"label": "gamma", "value": np.array([TAU_dam2SC]),
                            "doc": "constant for the damage of structural connectivity by hpTAU (cm/year)"}
         self.maxTAU2SCdam = {"label": "gamma", "value": np.array([maxTAU2SCdam]),
                            "doc": "maximum damage of structural connectivity by hpTAU (cm/year)"}
+
+        HA_initdam = HA_initdam if type(HA_initdam) == list else [HA_initdam for roi in initConn.region_labels]
+        self.HA_initdam = {"label": "q(POW)", "value": HA_initdam, "doc": "initial damage/impact variable of POWER"}
+        self.maxHAdam = {"label": "q(POW)", "value": np.array([maxHAdam]),
+                          "doc": "max damage/impact variable of POWER"}
         self.HA_damrate = {"label": "", "value": np.array([HA_damrate]),
                             "doc": "rate of damage/impact for AB (M/year)"}
 
@@ -597,9 +610,10 @@ class CircularADpgModel_vCC:
                        "doc": "constant for the effect of AB on excitation"}
         self.cABinh = {"label": "c_beta2", "value": np.array([cABinh]),
                        "doc": "constant for the effect of AB on inhibition"}
-        self.cTAU = {"label": "c_tau", "value": np.array([cTAU]),
+        self.cTAUexc = {"label": "c_tau", "value": np.array([cTAUexc]),
                      "doc": "constant for the effect of pTau on delays"}
-
+        self.cTAUinh = {"label": "c_tau", "value": np.array([cTAUinh]),
+                     "doc": "constant for the effect of pTau on delays"}
 
     def run(self, time, dt, sim=False, sim_dt=1):
 
@@ -658,7 +672,7 @@ class CircularADpgModel_vCC:
             TAUdam = state_variables[5]
             dWeights = - self.TAU_dam2SC["value"] * \
                        (np.tile(TAUdam, (len(TAUdam), 1)).transpose() + np.tile(TAUdam, (len(TAUdam), 1))) * \
-                       (weights - self.initConn["orig_weights"] * (1-self.maxTAU2SCdam["value"]))
+                       (weights - self.initConn["orig_weights"] * (1 - self.maxTAU2SCdam["value"]))
                         ## Current weights - 70% of the initial weights
 
             weights = weights + dWeights
@@ -737,10 +751,10 @@ class CircularADpgModel_vCC:
         dHe = self.cABexc["value"] * ABdam * (self.init_He["range"][1] - He_)
 
         ## INTRA-CONNECTIVITY transfers: a(exc), b(inh)
-        dCee = - self.cTAU["value"] * TAUdam * (Cee_ - self.init_Cee["range"][0])
+        dCee = - self.cTAUexc["value"] * TAUdam * (Cee_ - self.init_Cee["range"][0])
 
         dCie = - self.cABinh["value"] * ABdam * (Cie_ - self.init_Cie["range"][0]) \
-               - self.cTAU["value"] * TAUdam * (Cie_ - self.init_Cie["range"][0])
+               - self.cTAUinh["value"] * TAUdam * (Cie_ - self.init_Cie["range"][0])
 
         derivative = np.array([dAB, dABt, dTAU, dTAUt, dABdam, dTAUdam, dHe, dCee, dCie, dHAdam])
 
@@ -2441,14 +2455,17 @@ def braidPlot(out_circ, conn, mode="surface", rho_vals=None, title="new", folder
     rI = ["ctx-rh-entorhinal", "ctx-lh-entorhinal"]
 
     rII = ["Right-Hippocampus", "Left-Hippocampus"]
+
     rIII = ["ctx-rh-parahippocampal", "ctx-lh-parahippocampal",
             'Right-Amygdala', 'Left-Amygdala',
             'ctx-rh-fusiform', 'ctx-lh-fusiform',
             'ctx-rh-lingual', 'ctx-lh-lingual']
+
     rIV = ['ctx-rh-insula', 'ctx-lh-insula',
            'ctx-rh-inferiortemporal', 'ctx-lh-inferiortemporal',
            'ctx-rh-posteriorcingulate', 'ctx-lh-posteriorcingulate',
            'ctx-rh-inferiorparietal', 'ctx-lh-inferiorparietal']
+
     rV = ['ctx-rh-medialorbitofrontal', 'ctx-lh-medialorbitofrontal',
           'ctx-rh-superiortemporal', 'ctx-lh-superiortemporal',
           'ctx-rh-cuneus', 'ctx-lh-cuneus',
@@ -2475,12 +2492,12 @@ def braidPlot(out_circ, conn, mode="surface", rho_vals=None, title="new", folder
     if mode == "data_intime":
 
         tau_dyn = np.asarray(out_circ[1])[:, 3, :]
-        tau_dyn_perc = tau_dyn / tau_dyn[-1, :] * 100
 
-        rxs = [[tau_dyn_perc[:, list(conn.region_labels).index(roi)] for roi in rx] for rx in [rI, rII, rIII, rIV, rV]]
+        rxs = [[tau_dyn[:, list(conn.region_labels).index(roi)] for roi in rx] for rx in [rI, rII, rIII, rIV, rV]]
         rxs_avg = np.asarray([np.average(np.asarray(rx), axis=0) for rx in rxs])
+        # For each percentage; tell me in what time it was rebased.
 
-        rxs_perc = rxs_avg.transpose() / rxs_avg[:, -1]
+        rxs_perc = rxs_avg.transpose() / rxs_avg[:, -1] * 100
                                                         # (-)rxs_avg to sort in descending order
         # sortRx_TIME = [str(np.asarray(r_names)[np.argsort(-row)]) for row in rxs_perc]
 
@@ -2489,12 +2506,14 @@ def braidPlot(out_circ, conn, mode="surface", rho_vals=None, title="new", folder
     elif (mode == "diagram") or (mode == "data_inperc"):
 
         tau_dyn = np.asarray(out_circ[1])[:, 3, :]
-        tau_dyn_perc = tau_dyn / tau_dyn[-1, :] * 100
 
-        rxs = [[tau_dyn_perc[:, list(conn.region_labels).index(roi)] for roi in rx] for rx in [rI, rII, rIII, rIV, rV]]
+        rxs = [[tau_dyn[:, list(conn.region_labels).index(roi)] for roi in rx] for rx in [rI, rII, rIII, rIV, rV]]
         rxs_avg = np.asarray([np.average(np.asarray(rx), axis=0) for rx in rxs])
         # For each percentage; tell me in what time it was rebased.
-        percxRx_TIME = np.asarray([[np.min(np.argwhere(rx >= perc)) for rx in rxs_avg] for perc in range(1, 100)])
+
+        rxs_perc = rxs_avg.transpose() / np.max(rxs_avg, axis=1) * 100
+
+        percxRx_TIME = np.asarray([[np.min(np.argwhere(rx >= perc)) for rx in rxs_perc.T] for perc in range(1, 100)])
         # columns=["rI", "rII", "rIII", "rIV", "rV"])
         # Tell me the rx order based on perc_time
         percxRx_ORDER_braiddiag = np.asarray([np.argsort(np.argsort(row)) for row in percxRx_TIME])
@@ -2517,7 +2536,7 @@ def braidPlot(out_circ, conn, mode="surface", rho_vals=None, title="new", folder
             fig = make_subplots(rows=2, cols=1, subplot_titles=["Temporal dynamics: first time surpassing percentage",
                                                                 "Braid diagram"])
             for i in range(percxRx_ORDER_braiddiag.shape[1]):
-                fig.add_trace(go.Scatter(x=percxRx_TIME[:, i], y=list(range(1, 100)), name=r_names[i],
+                fig.add_trace(go.Scatter(x=list(range(len(rxs_perc))), y=rxs_perc[:, i], name=r_names[i],
                                          legendgroup="r" + str(i + 1),
                                          showlegend=False, line=dict(color=cmap[i])), row=1, col=1)
                 fig.add_trace(go.Scatter(x=list(range(1, 100)), y=percxRx_ORDER_braiddiag[:, i], name=r_names[i],

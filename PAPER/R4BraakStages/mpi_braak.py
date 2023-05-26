@@ -3,16 +3,16 @@ import pickle
 import pandas as pd
 from mpi4py import MPI
 import numpy as np
-from adpgCirc_parallel import *
+from braak_parallel import *
 
 """
 Following a tutorial: 
 https://towardsdatascience.com/parallel-programming-in-python-with-message-passing-interface-mpi4py-551e3f198053
 
-execute in terminal with : mpiexec -n 4 python mpi_adpgCirc.py
+execute in terminal with : mpiexec -n 4 python mpi_braak.py
 """
 
-name = "ADpgCirc_vCC"
+name = "BraakStages"
 
 # get number of processors and processor rank
 comm = MPI.COMM_WORLD
@@ -21,25 +21,11 @@ rank = comm.Get_rank()
 
 ## Define param combinations
 # Common simulation requirements
-maxHe_vals = np.arange(0, 2, 0.02)
-mCie_vals = np.arange(0, 30, 0.25)
-mCee_vals = np.arange(0, 100, 1)
-maxTAU2SC_vals = np.arange(0, 0.9, 0.009)
-HAdamrate_vals = np.arange(0, 50, 0.5)
+reps = 100
+modes = ["ab_rand", "tau_rand", "rand", "fixed"]
 
         # maxHe, mCie, mCee, maxTAU2SC, rho, HAdamrate, ABinh, TAUinh
-params = [[maxHe, 20.5, 75, 0.3, 100, 5, 0.4, 1.8] for maxHe in maxHe_vals] + \
-         [[0.35, mCie, 75, 0.3, 100, 5, 0.4, 1.8] for mCie in mCie_vals] + \
-         [[0.35, mCie, 75, 0.3, 100, 5, 0, 1.8] for mCie in mCie_vals] + \
-         [[0.35, mCie, 75, 0.3, 100, 5, 0.4, 0] for mCie in mCie_vals] + \
-         [[0.35, 20.5, mCee, 0.3, 100, 5, 0.4, 1.8] for mCee in mCee_vals] + \
-         [[0.35, 20.5, 75, maxTAU2SC, 100, 5, 0.4, 1.8] for maxTAU2SC in maxTAU2SC_vals] + \
-         [[0.35, 20.5, 75, 0.3, 100, HAdamrate, 0.4, 1.8] for HAdamrate in HAdamrate_vals]
-
-# TAU2SC_vals = np.logspace(-8, 1, 100)  # orig = 5e-2
-# params = [[0.35, 20.5, 75, 0.8, 100, 5, 0.4, 1.8, TAU2SC] for TAU2SC in TAU2SC_vals] + \
-#          [[0.35, 20.5, 75, 0.5, 100, 5, 0.4, 1.8, TAU2SC] for TAU2SC in TAU2SC_vals] + \
-#          [[0.35, 20.5, 75, 0.3, 100, 5, 0.4, 1.8, TAU2SC] for TAU2SC in TAU2SC_vals]
+params = [[mode, r] for mode in modes for r in range(reps)]
 
 
 params = np.asarray(params, dtype=object)
@@ -60,7 +46,7 @@ else:
 
 local_params = params[start:stop, :]  # get the portion of the array to be analyzed by each rank
 
-local_results = adpgCirc_parallel(local_params)  # run the function for each parameter set and rank
+local_results = braak_parallel(local_params)  # run the function for each parameter set and rank
 
 print("Rank %i ha finalizado las simulaciones" % rank)
 
@@ -80,8 +66,7 @@ else:  ## MASTER PROCESS _receive, merge and save results
 
     print("Main ha recogido los datos; ahora guardar.")
 
-    fResults_df = pd.DataFrame(final_results, columns=["maxHe", "minCie", "minCee", "maxTAU2SC", "rho",
-                                                       "HAdamrate", "cABinh", "cTAUinh",
+    fResults_df = pd.DataFrame(final_results, columns=["mode", "r",
                                                        "time", "fpeak", "relpow_alpha",
                                                        "avgrate_pos", "avgrate_ant", "avgfc_pos", "avgfc_ant",
                                                        "rI", "rII", "rIII", "rIV", "rV"])

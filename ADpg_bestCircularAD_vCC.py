@@ -173,11 +173,12 @@ bnm_simL, transient, bnm_dt = 10, 2, 1  # Units (seconds, seconds, years)
 
 circmodel = CircularADpgModel_vCC(
     conn, AB_initMap, TAU_initMap, ABt_initMap, TAUt_initMap, AB_initdam, TAU_initdam, HA_initdam,
-    TAU_dam2SC=5e-2, maxTAU2SCdam=0.3, HA_damrate=5,  # maxHAdam=1.25,  # origins @ ¿?, 0.01, 1.5
+    TAU_dam2SC=5e-2, HA_damrate=5, maxTAU2SCdam=0.3, # maxHAdam=1.25,  # origins @ ¿?, 0.01, 1.5
     init_He=3.25, init_Cee=108, init_Cie=33.75,  # origins 3.25, 108, 33.75 || Initial values for NMM variable parameters
     rho=50, toxicSynergy=0.4,  # origins 5, 2 || rho as a diffusion constant
     prodAB=3, clearAB=3, transAB2t=3, clearABt=2.4,
-    prodTAU=3, clearTAU=3, transTAU2t=3, clearTAUt=2.55)
+    prodTAU=3, clearTAU=3, transTAU2t=3, clearTAUt=2.55,
+    cABexc=0.8, cABinh=0.4, cTAUexc=1.8, cTAUinh=1.8)
 
 # 3.2 Define parameter ranges of change
 rHe = [0.35, 0.35]
@@ -224,6 +225,38 @@ braidPlot(out_circ, conn, mode="diagram")
 # param_info = "He"+str(circmodel.init_He["value"][0])+str(rHe) + "; Cie" + str(circmodel.init_Cie["value"][0]) + "; Cee" + str(circmodel.init_Cie["value"][0])+ str(rCee) +"; maxTAU2SC" + str(circmodel.maxTAU2SCdam["value"])
 # paramtraj_in3D(out_circ, "vH_freq", "PSEmpi_3dFreqCharts4.0-m03d08y2023-t12h.46m.17s", folder=spec_fold, auto_open=True, param_info=param_info)
 # paramtraj_in3D(out_circ, "vH_rate", "PSEmpi_3dFreqCharts4.0-m03d08y2023-t12h.46m.17s", folder=spec_fold, auto_open=True, param_info=param_info)
+
+
+# # ad-hoc PLAYGROUD
+# from plotly.subplots import make_subplots
+# import plotly.graph_objects as go
+#
+#
+# fig = make_subplots(rows=3, cols=1, subplot_titles=["I/E", "He/Cie", "Cee/Cie"])
+# time = out_circ[0]
+# svars = np.average(np.array(out_circ[1]), axis=2)
+# he, cee, cie = svars[:, -4], svars[:, -3], svars[:, -2]
+# he = (he - min(he)) / (max(he) - min(he))
+# cee = (cee - min(cee)) / (max(cee) - min(cee))
+# cie = (cie - min(cie)) / (max(cie) - min(cie))
+#
+# fig.add_trace(go.Scatter(x=time, y=he + cee - cie), row=1, col=1)
+# fig.add_trace(go.Scatter(x=time, y=he - cie), row=2, col=1)
+# fig.add_trace(go.Scatter(x=time, y=cee - cie), row=3, col=1)
+#
+# fig.show("browser")
+#
+# ####
+# shortout = [np.array([out_circ[0][i] for i, out in enumerate(out_circ[2]) if len(out) > 1]),
+#             [out for i, out in enumerate(out_circ[2]) if len(out) > 1]]
+#
+# rate_t0 = shortout[1][0][3]
+#
+# # plot corr between seeds and baseline rate
+# import plotly.express as px
+# fig = px.scatter(x=rate_t0, y=ABt_initMap, hover_name=conn.region_labels)
+# fig.show("browser")
+# plot corr between baseline rate and ADNI "seeding"
 
 
 # 5.2 Dynamical firing rate, signals and spectra

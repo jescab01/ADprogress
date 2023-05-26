@@ -156,31 +156,32 @@ for i in range(rows):
 
 standoff_y, standoff_x = 0, 10
 fig.update_layout(template="plotly_white",
-                  xaxis1=dict(title="He", title_standoff=standoff_x), yaxis1=dict(title="Cie", title_standoff=standoff_y),
-                  xaxis2=dict(title="Cee", title_standoff=standoff_x), yaxis2=dict(title="Cie", title_standoff=standoff_y),
-                  xaxis3=dict(title="Cee", title_standoff=standoff_x), yaxis3=dict(title="p", title_standoff=standoff_y),
-                  xaxis4=dict(title="p", title_standoff=standoff_x), yaxis4=dict(title="Cie", title_standoff=standoff_y),
+                  xaxis1=dict(title="He", title_standoff=standoff_x), yaxis1=dict(title="Cip", title_standoff=standoff_y),
+                  xaxis2=dict(title="Cep", title_standoff=standoff_x), yaxis2=dict(title="Cip", title_standoff=standoff_y),
+                  xaxis3=dict(title="Cep", title_standoff=standoff_x), yaxis3=dict(title="p", title_standoff=standoff_y),
+                  xaxis4=dict(title="p", title_standoff=standoff_x), yaxis4=dict(title="Cip", title_standoff=standoff_y),
 
-                  xaxis5=dict(title="He", title_standoff=standoff_x), yaxis5=dict(title="Cie", title_standoff=standoff_y),
-                  xaxis6=dict(title="Cee", title_standoff=standoff_x), yaxis6=dict(title="Cie", title_standoff=standoff_y),
-                  xaxis7=dict(title="Cee", title_standoff=standoff_x), yaxis7=dict(title="p", title_standoff=standoff_y),
-                  xaxis8=dict(title="p", title_standoff=standoff_x), yaxis8=dict(title="Cie", title_standoff=standoff_y),
+                  xaxis5=dict(title="He", title_standoff=standoff_x), yaxis5=dict(title="Cip", title_standoff=standoff_y),
+                  xaxis6=dict(title="Cep", title_standoff=standoff_x), yaxis6=dict(title="Cip", title_standoff=standoff_y),
+                  xaxis7=dict(title="Cep", title_standoff=standoff_x), yaxis7=dict(title="p", title_standoff=standoff_y),
+                  xaxis8=dict(title="p", title_standoff=standoff_x), yaxis8=dict(title="Cip", title_standoff=standoff_y),
 
-                  xaxis9=dict(title="He", title_standoff=standoff_x), yaxis9=dict(title="Cie", title_standoff=standoff_y),
-                  xaxis10=dict(title="Cee", title_standoff=standoff_x), yaxis10=dict(title="Cie", title_standoff=standoff_y),
-                  xaxis11=dict(title="Cee", title_standoff=standoff_x), yaxis11=dict(title="p", title_standoff=standoff_y),
-                  xaxis12=dict(title="p", title_standoff=standoff_x), yaxis12=dict(title="Cie", title_standoff=standoff_y),
+                  xaxis9=dict(title="He", title_standoff=standoff_x), yaxis9=dict(title="Cip", title_standoff=standoff_y),
+                  xaxis10=dict(title="Cep", title_standoff=standoff_x), yaxis10=dict(title="Cip", title_standoff=standoff_y),
+                  xaxis11=dict(title="Cep", title_standoff=standoff_x), yaxis11=dict(title="p", title_standoff=standoff_y),
+                  xaxis12=dict(title="p", title_standoff=standoff_x), yaxis12=dict(title="Cip", title_standoff=standoff_y),
 
-                  xaxis13=dict(title="He", title_standoff=standoff_x), yaxis13=dict(title="Cie", title_standoff=standoff_y),
-                  xaxis14=dict(title="Cee", title_standoff=standoff_x), yaxis14=dict(title="Cie", title_standoff=standoff_y),
-                  xaxis15=dict(title="Cee", title_standoff=standoff_x), yaxis15=dict(title="p", title_standoff=standoff_y),
-                  xaxis16=dict(title="p", title_standoff=standoff_x), yaxis16=dict(title="Cie", title_standoff=standoff_y),
+                  xaxis13=dict(title="He", title_standoff=standoff_x), yaxis13=dict(title="Cip", title_standoff=standoff_y),
+                  xaxis14=dict(title="Cep", title_standoff=standoff_x), yaxis14=dict(title="Cip", title_standoff=standoff_y),
+                  xaxis15=dict(title="Cep", title_standoff=standoff_x), yaxis15=dict(title="p", title_standoff=standoff_y),
+                  xaxis16=dict(title="p", title_standoff=standoff_x), yaxis16=dict(title="Cip", title_standoff=standoff_y),
 
-                  xaxis17=dict(title="He", title_standoff=standoff_x), yaxis17=dict(title="Cie", title_standoff=standoff_y),
-                  xaxis18=dict(title="Cee", title_standoff=standoff_x), yaxis18=dict(title="Cie", title_standoff=standoff_y),
-                  xaxis19=dict(title="Cee", title_standoff=standoff_x), yaxis19=dict(title="p", title_standoff=standoff_y),
-                  xaxis20=dict(title="p", title_standoff=standoff_x), yaxis20=dict(title="Cie", title_standoff=standoff_y),
+                  xaxis17=dict(title="He", title_standoff=standoff_x), yaxis17=dict(title="Cip", title_standoff=standoff_y),
+                  xaxis18=dict(title="Cep", title_standoff=standoff_x), yaxis18=dict(title="Cip", title_standoff=standoff_y),
+                  xaxis19=dict(title="Cep", title_standoff=standoff_x), yaxis19=dict(title="p", title_standoff=standoff_y),
+                  xaxis20=dict(title="p", title_standoff=standoff_x), yaxis20=dict(title="Cip", title_standoff=standoff_y),
                    width=800, height=900)
+
 # axis labels with latex
 # xaxis1 = dict(title=r"$H_e$", title_standoff=standoff_x), yaxis1 = dict(title=r"$C_{ie}$", title_standoff=standoff_y),
 # xaxis2 = dict(title=r"$C_{ee}$", title_standoff=standoff_x), yaxis2 = dict(title=r"$C_{ie}$",

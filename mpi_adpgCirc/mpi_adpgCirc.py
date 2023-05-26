@@ -48,13 +48,22 @@ rank = comm.Get_rank()
 # #          [[0.35, 15, 75, 0.3, 50, 2, HAdamrate] for HAdamrate in HAdamrate_vals]
 # params = [[0.35, 15, 75, 0.3, 50, 2, HAdamrate] for HAdamrate in HAdamrate_vals]
 
-seed = np.logspace(-8, 0, 100)
+# seed = np.logspace(-8, 0, 100)
+#
+#         # maxHe, mCie, mCee, maxTAU2SC, rho, HAdamrate, seedingAB, seedingTAU
+# params = [[0.35, 20.5, 75, 0.3, 50, 15, s, 0] for s in seed] + \
+#          [[0.35, 20.5, 75, 0.3, 50, 15, 0, s] for s in seed] + \
+#          [[0.35, 20.5, 75, 0.3, 50, 15, s, s] for s in seed]
 
-        # maxHe, mCie, mCee, maxTAU2SC, rho, HAdamrate, seedingAB, seedingTAU
-params = [[0.35, 20.5, 75, 0.3, 50, 15, s, 0] for s in seed] + \
-         [[0.35, 20.5, 75, 0.3, 50, 15, 0, s] for s in seed] + \
-         [[0.35, 20.5, 75, 0.3, 50, 15, s, s] for s in seed]
+maxHe_vals = np.arange(0, 5, 0.01)  #[0.22]  #define valor  # [0, 0.022]  # np.logspace(-8, 2, 30)
+mCie_vals = np.arange(1, 25, 0.5)  #[0.22]  #define valor  # [0, 0.022]  # np.logspace(-8, 2, 30)
+mCee_vals = np.arange(40, 80, 1)  #[0.22]  #define valor  # [0, 0.022]  # np.logspace(-8, 2, 30)
+maxTAU2SC_vals = np.arange(0.1, 0.8, 0.005)
 
+params = [[maxHe, 15, 75, 0.3] for maxHe in maxHe_vals] + \
+         [[0.35, mCie, 75, 0.3] for mCie in mCie_vals] + \
+         [[0.35, 15, mCee, 0.3] for mCee in mCee_vals] + \
+         [[0.35, 15, 75, maxTAU2SC] for maxTAU2SC in maxTAU2SC_vals]
 
 params = np.asarray(params, dtype=object)
 n = params.shape[0]

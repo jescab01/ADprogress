@@ -39,9 +39,9 @@ mode, emp_subj, g, s = "jr_isolated", "NEMOS_035", 33, 15.5
 def simulate(mode, emp_subj, g, s, He, Cie, Cee, p, _):
 
     # Prepare simulation parameters
-    simLength = 30 * 1000  # ms
+    simLength = 10 * 1000  # ms
     samplingFreq = 1000  # Hz
-    transient = 10000  # ms
+    transient = 2000  # ms
 
     # COMMON SIMULATION PARAMETERS   ###
     # integrator: dt=T(ms)=1000/samplingFreq(kHz)=1/samplingFreq(HZ)
